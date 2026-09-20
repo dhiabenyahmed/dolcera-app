@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!-- ===== Cell A (ornate frame) top-left & bottom-right ===== -->
+  <g id="frameMotif">
+    <rect x="15" y="15" width="90" height="90" rx="28" fill="none" stroke="#1B4496" stroke-width="3"/>
+    <rect x="29" y="29" width="62" height="62" rx="16" fill="none" stroke="#1B4496" stroke-width="1.8"/>
+    <!-- corner flourishes -->
+    <path d="M15 33 Q15 15 33 15" fill="none" stroke="#E9A72F" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M87 15 Q105 15 105 33" fill="none" stroke="#E9A72F" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M105 87 Q105 105 87 105" fill="none" stroke="#E9A72F" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M33 105 Q15 105 15 87" fill="none" stroke="#E9A72F" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- quatrefoil center -->
+    <g transform="translate(60,60)">
+      <circle cx="-7" cy="-7" r="8.5" fill="#1B4496"/>
+      <circle cx="7" cy="-7" r="8.5" fill="#E9A72F"/>
+      <circle cx="-7" cy="7" r="8.5" fill="#E9A72F"/>
+      <circle cx="7" cy="7" r="8.5" fill="#1B4496"/>
+      <circle cx="0" cy="0" r="4" fill="#FBF6EC"/>
+      <circle cx="0" cy="0" r="2" fill="#0F2E66"/>
+    </g>
+  </g>
+  <use href="#frameMotif" x="120" y="120"/>
+
+  <!-- ===== Cell B (6-point star) top-right & bottom-left ===== -->
+  <g id="starMotif" transform="translate(180,60)">
+    <path d="M0 -40 L9 -13 L38 -13 L14 4 L23 32 L0 15 L-23 32 L-14 4 L-38 -13 L-9 -13 Z"
+      fill="none" stroke="#1B4496" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="0" cy="0" r="3" fill="#E9A72F"/>
+  </g>
+  <use href="#starMotif" x="-120" y="120"/>
+
+  <!-- ===== filler accents (gold dashes / dots / commas) ===== -->
+  <g fill="#E9A72F">
+    <ellipse cx="60" cy="112" rx="7" ry="3" transform="rotate(35 60 112)"/>
+    <ellipse cx="180" cy="112" rx="7" ry="3" transform="rotate(-35 180 112)"/>
+    <ellipse cx="120" cy="55" rx="7" ry="3" transform="rotate(60 120 55)"/>
+    <ellipse cx="120" cy="185" rx="7" ry="3" transform="rotate(60 120 185)"/>
+    <circle cx="8" cy="8" r="3"/>
+    <circle cx="232" cy="8" r="3"/>
+    <circle cx="8" cy="232" r="3"/>
+    <circle cx="232" cy="232" r="3"/>
+    <circle cx="120" cy="8" r="2.5"/>
+    <circle cx="120" cy="232" r="2.5"/>
+    <circle cx="8" cy="120" r="2.5"/>
+    <circle cx="232" cy="120" r="2.5"/>
+  </g>
+  <g fill="none" stroke="#1B4496" stroke-width="1.6" opacity="0.6">
+    <path d="M45 100 q5 8 12 4" stroke-linecap="round"/>
+    <path d="M195 100 q-5 8 -12 4" stroke-linecap="round"/>
+    <path d="M45 140 q5 -8 12 -4" stroke-linecap="round"/>
+    <path d="M195 140 q-5 -8 -12 -4" stroke-linecap="round"/>
+  </g>
+</svg>
