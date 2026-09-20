@@ -1,0 +1,16 @@
+<div class="period-bar">
+  {% set presets = [("today","Aujourd'hui"), ("7d","7 jours"), ("month","Ce mois-ci"), ("year","Cette année"), ("all","Tout"), ("custom","Personnalisé")] %}
+  {% for key,label in presets %}
+    <a class="period-btn {{ 'active' if period.preset==key else '' }}" href="{{ url_for(request.endpoint, period=key) }}">{{ label }}</a>
+  {% endfor %}
+  {% if period.preset == "custom" %}
+    <form class="period-custom" method="get" action="{{ url_for(request.endpoint) }}">
+      <input type="hidden" name="period" value="custom">
+      <input type="date" name="start" value="{{ period.start }}">
+      <span>→</span>
+      <input type="date" name="end" value="{{ period.end }}">
+      <button type="submit" class="btn btn-ghost btn-sm">Appliquer</button>
+    </form>
+  {% endif %}
+  <span class="period-label">{{ period.label_start }} → {{ period.label_end }}</span>
+</div>

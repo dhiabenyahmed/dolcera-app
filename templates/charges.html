@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block pagetitle %}Charges{% endblock %}
+{% block content %}
+{% include "_period.html" %}
+
+<div class="form-card">
+  <h3>💸 Nouvelle charge</h3>
+  <form method="post" action="{{ url_for('charges', **request.args) }}">
+    <div class="form-row">
+      <div class="field"><label>Date</label><input type="date" name="date" value="{{ today }}" required></div>
+      <div class="field"><label>Catégorie</label>
+        <select name="category">{% for c in charge_cats %}<option value="{{ c }}">{{ c }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Description</label><input type="text" name="description" placeholder="ex: Farine, sucre…"></div>
+      <div class="field"><label>Montant (DT)</label><input type="number" name="amount" min="0" step="0.001" required></div>
+      <div><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">Total charges</div><div class="value">{{ dt(ch.total) }}</div><div class="sub">{{ period.label_start }} → {{ period.label_end }}</div></div>
+  <div class="kpi"><div class="label">Nombre de charges</div><div class="value">{{ ch.rows|length }}</div></div>
+  <div class="kpi gold"><div class="label">Plus grosse catégorie</div><div class="value" style="font-size:16px">{{ top_cat[0] if top_cat else "—" }}</div><div class="sub">{{ dt(top_cat[1]) if top_cat else "" }}</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card"><h3>Évolution des charges</h3><div class="chart-wrap small"><canvas id="chChgEvo"></canvas></div></div>
+  <div class="card"><h3>Répartition par catégorie</h3><div class="chart-wrap small"><canvas id="chChgCat"></canvas></div></div>
+</div>
+
+<div class="table-card">
+  <div class="table-head"><h3>Charges</h3>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('export_csv', kind='charges', **request.args) }}">Exporter CSV</a></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th class="num">Montant</th><th></th></tr></thead>
+    <tbody>
+      {% if ch.rows|length == 0 %}
+        <tr><td colspan="5" class="empty">Aucune charge enregistrée sur cette période.</td></tr>
+      {% else %}
+        {% for r in ch.rows %}
+        <tr>
+          <td>{{ r.date[8:10] }}/{{ r.date[5:7] }}/{{ r.date[0:4] }}</td>
+          <td><span class="cat-chip">{{ r.category }}</span></td>
+          <td>{{ r.description or "—" }}</td>
+          <td class="num"><b>{{ dt(r.amount) }}</b></td>
+          <td><form method="post" action="{{ url_for('charges_delete', id=r.id, **request.args) }}" onsubmit="return confirm('Supprimer cette charge ?')"><button class="btn-danger">Suppr.</button></form></td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data|tojson }};
+const gridColor = "#E7DFC9";
+new Chart(document.getElementById("chChgEvo"), { type:"bar", data:{ labels:cd.days, datasets:[{ label:"Charges", data:cd.series, backgroundColor:"#C97F17", borderRadius:4 }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}, grid:{color:gridColor} }, y:{ grid:{color:gridColor} } } } });
+new Chart(document.getElementById("chChgCat"), { type:"doughnut", data:{ labels:cd.cat_labels, datasets:[{ data:cd.cat_values, backgroundColor:["#1B4496","#E9A72F","#5F8FD9","#C97F17","#0F2E66","#F0C56B","#28569F","#C24A2E","#8899BB"] }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{boxWidth:12, font:{size:11}}}} } });
+</script>
+{% endblock %}

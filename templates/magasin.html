@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block pagetitle %}Magasin{% endblock %}
+{% block content %}
+{% include "_period.html" %}
+
+<div class="form-card">
+  <h3>🧾 Nouvelle vente — Magasin</h3>
+  <form method="post" action="{{ url_for('magasin', **request.args) }}">
+    <div class="form-row">
+      <div class="field"><label>Date</label><input type="date" name="date" value="{{ today }}" required></div>
+      <div class="field"><label>Produit</label>
+        <select name="product_id" id="fmProduct" required onchange="syncProd()">
+          <option value="">— Choisir —</option>
+          {% for cat, items in products|groupby('category') %}
+            <optgroup label="{{ cat }}">
+              {% for p in items %}
+                <option value="{{ p.id }}" data-price="{{ p.price }}" data-unit="{{ p.unit }}">{{ p.name }} — {{ '%.3f'|format(p.price) }} DT{{ '/kg' if p.unit=='kg' else '' }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label id="fmQtyLabel">Quantité</label><input type="number" name="qty" id="fmQty" min="0.01" step="1" value="1" required oninput="updatePreview()"></div>
+      <div class="field"><label>Prix unitaire (DT)</label><input type="number" name="unit_price" id="fmPrice" min="0" step="0.001" required oninput="updatePreview()"></div>
+      <div><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+    </div>
+    <div class="hint" id="fmPreview"></div>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">CA Magasin</div><div class="value">{{ dt(m.ca) }}</div><div class="sub">{{ period.preset }}</div></div>
+  <div class="kpi"><div class="label">Nombre de ventes</div><div class="value">{{ m.count }}</div></div>
+  <div class="kpi"><div class="label">Panier moyen</div><div class="value">{{ dt(m.avg) }}</div></div>
+  <div class="kpi gold"><div class="label">Produit star</div><div class="value" style="font-size:16px">{{ star[0] if star else "—" }}</div><div class="sub">{{ dt(star[1]) if star else "" }}</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card"><h3>Évolution du CA Magasin</h3><div class="chart-wrap small"><canvas id="chMagEvo"></canvas></div></div>
+  <div class="card"><h3>Répartition par catégorie</h3><div class="chart-wrap small"><canvas id="chMagCat"></canvas></div></div>
+</div>
+
+<div class="table-card">
+  <div class="table-head"><h3>Ventes — {{ period.label_start }} → {{ period.label_end }}</h3>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('export_csv', kind='magasin', **request.args) }}">Exporter CSV</a></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Date</th><th>Produit</th><th>Catégorie</th><th class="num">Qté</th><th class="num">PU</th><th class="num">Total</th><th></th></tr></thead>
+    <tbody>
+      {% if m.rows|length == 0 %}
+        <tr><td colspan="7" class="empty">Aucune vente enregistrée sur cette période.</td></tr>
+      {% else %}
+        {% for r in m.rows %}
+        <tr>
+          <td>{{ r.date[8:10] }}/{{ r.date[5:7] }}/{{ r.date[0:4] }}</td>
+          <td>{{ r.product_name }}</td>
+          <td><span class="cat-chip">{{ r.category }}</span></td>
+          <td class="num">{{ r.qty }}{{ ' kg' if r.unit=='kg' else '' }}</td>
+          <td class="num">{{ '%.3f'|format(r.unit_price) }}</td>
+          <td class="num"><b>{{ dt(r.total) }}</b></td>
+          <td><form method="post" action="{{ url_for('magasin_delete', id=r.id, **request.args) }}" onsubmit="return confirm('Supprimer cette vente ?')"><button class="btn-danger">Suppr.</button></form></td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data|tojson }};
+const gridColor = "#E7DFC9";
+new Chart(document.getElementById("chMagEvo"), { type:"line", data:{ labels:cd.days, datasets:[{ label:"CA", data:cd.series, borderColor:"#1B4496", backgroundColor:"rgba(27,68,150,.12)", fill:true, tension:.3, pointRadius:cd.days.length>20?0:2 }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}, grid:{color:gridColor} }, y:{ grid:{color:gridColor} } } } });
+new Chart(document.getElementById("chMagCat"), { type:"doughnut", data:{ labels:cd.cat_labels, datasets:[{ data:cd.cat_values, backgroundColor:cd.cat_colors }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{boxWidth:12, font:{size:11}}}} } });
+
+function syncProd(){
+  const sel = document.getElementById("fmProduct");
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.dataset.price) return;
+  document.getElementById("fmPrice").value = opt.dataset.price;
+  document.getElementById("fmQtyLabel").textContent = opt.dataset.unit === "kg" ? "Quantité (kg)" : "Quantité";
+  document.getElementById("fmQty").step = opt.dataset.unit === "kg" ? "0.05" : "1";
+  updatePreview();
+}
+function updatePreview(){
+  const qty = parseFloat(document.getElementById("fmQty").value)||0;
+  const price = parseFloat(document.getElementById("fmPrice").value)||0;
+  document.getElementById("fmPreview").textContent = "Total : " + (qty*price).toFixed(3) + " DT";
+}
+</script>
+{% endblock %}

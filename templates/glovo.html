@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block pagetitle %}Glovo{% endblock %}
+{% block content %}
+{% include "_period.html" %}
+
+<div class="form-card">
+  <h3>🛵 Nouvelle commande — Glovo</h3>
+  <form method="post" action="{{ url_for('glovo', **request.args) }}">
+    <div class="form-row">
+      <div class="field"><label>Date</label><input type="date" name="date" value="{{ today }}" required></div>
+      <div class="field"><label>Produit</label>
+        <select name="product_id" id="fgProduct" required onchange="syncProd()">
+          <option value="">— Choisir —</option>
+          {% for cat, items in products|groupby('category') %}
+            <optgroup label="{{ cat }}">
+              {% for p in items %}
+                <option value="{{ p.id }}" data-price="{{ p.price }}" data-unit="{{ p.unit }}">{{ p.name }} — {{ '%.3f'|format(p.price) }} DT{{ '/kg' if p.unit=='kg' else '' }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label id="fgQtyLabel">Quantité</label><input type="number" name="qty" id="fgQty" min="0.01" step="1" value="1" required oninput="updatePreview()"></div>
+      <div class="field"><label>Prix Glovo /unité (DT)</label><input type="number" name="glovo_price" id="fgPrice" min="0" step="0.001" required oninput="updatePreview()"></div>
+      <div class="field"><label>Statut</label>
+        <select name="status" id="fgStatus">
+          <option value="livree">Livrée</option>
+          <option value="annulee_sortie">Annulée — mais sortie du magasin (payée)</option>
+          <option value="annulee">Annulée — non sortie (aucun gain)</option>
+        </select>
+      </div>
+      <div><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+    </div>
+    <div class="hint" id="fgPreview"></div>
+    <div class="hint">Prix Glovo = prix magasin + {{ (markup-1)*100|round|int }}% HT (calculé automatiquement, modifiable). Glovo prélève {{ (commission_rate*100)|round(1) }}% de commission sur le montant brut.</div>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">CA Brut Glovo</div><div class="value">{{ dt(gl.brut) }}</div><div class="sub">{{ period.label_start }} → {{ period.label_end }}</div></div>
+  <div class="kpi"><div class="label">Commission Glovo</div><div class="value" style="color:var(--warn)">− {{ dt(gl.commission) }}</div></div>
+  <div class="kpi gold"><div class="label">Net reçu (virement)</div><div class="value">{{ dt(gl.net) }}</div></div>
+  <div class="kpi"><div class="label">Commandes livrées</div><div class="value">{{ gl.count_livree }}</div></div>
+  <div class="kpi accent" style="border-left-color:var(--gold-600)"><div class="label">Annulées — sorties (payées)</div><div class="value" style="font-size:19px">{{ gl.count_annulee_sortie }}</div><div class="sub">{{ dt(gl.montant_annulee_sortie) }}</div></div>
+  <div class="kpi" style="border-left:4px solid var(--warn)"><div class="label">Vraies annulations</div><div class="value" style="color:var(--warn)">{{ gl.count_annulee }}</div><div class="sub">Taux : {{ '%.1f'|format(gl.taux_annulation) }}%</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card"><h3>Évolution du net reçu</h3><div class="chart-wrap small"><canvas id="chGloEvo"></canvas></div></div>
+  <div class="card"><h3>Répartition des statuts</h3><div class="chart-wrap small"><canvas id="chGloStatus"></canvas></div></div>
+</div>
+
+<div class="table-card">
+  <div class="table-head"><h3>Commandes Glovo</h3>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('export_csv', kind='glovo', **request.args) }}">Exporter CSV</a></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Date</th><th>Produit</th><th class="num">Qté</th><th class="num">Brut</th><th class="num">Commission</th><th class="num">Net</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% if gl.rows|length == 0 %}
+        <tr><td colspan="8" class="empty">Aucune commande Glovo sur cette période.</td></tr>
+      {% else %}
+        {% for r in gl.rows %}
+        <tr>
+          <td>{{ r.date[8:10] }}/{{ r.date[5:7] }}/{{ r.date[0:4] }}</td>
+          <td>{{ r.product_name }}</td>
+          <td class="num">{{ r.qty }}{{ ' kg' if r.unit=='kg' else '' }}</td>
+          <td class="num">{{ dt(r.brut) }}</td>
+          <td class="num">{{ dt(r.commission) }}</td>
+          <td class="num"><b>{{ dt(r.net) }}</b></td>
+          <td>
+            {% if r.status=='livree' %}<span class="badge ok">Livrée</span>
+            {% elif r.status=='annulee_sortie' %}<span class="badge flag">Annulée — sortie</span>
+            {% else %}<span class="badge warn">Annulée</span>{% endif %}
+          </td>
+          <td><form method="post" action="{{ url_for('glovo_delete', id=r.id, **request.args) }}" onsubmit="return confirm('Supprimer cette commande ?')"><button class="btn-danger">Suppr.</button></form></td>
+        </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data|tojson }};
+const gridColor = "#E7DFC9";
+new Chart(document.getElementById("chGloEvo"), { type:"line", data:{ labels:cd.days, datasets:[{ label:"Net", data:cd.series, borderColor:"#E9A72F", backgroundColor:"rgba(233,167,47,.16)", fill:true, tension:.3, pointRadius:cd.days.length>20?0:2 }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}, grid:{color:gridColor} }, y:{ grid:{color:gridColor} } } } });
+new Chart(document.getElementById("chGloStatus"), { type:"doughnut", data:{ labels:["Livrées","Annulées — sorties","Vraies annulations"], datasets:[{ data:cd.status_values, backgroundColor:["#2F8F5B","#E9A72F","#C24A2E"] }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}} } });
+
+function syncProd(){
+  const sel = document.getElementById("fgProduct");
+  const opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.dataset.price) return;
+  document.getElementById("fgPrice").value = (parseFloat(opt.dataset.price)*{{ markup }}).toFixed(3);
+  document.getElementById("fgQtyLabel").textContent = opt.dataset.unit === "kg" ? "Quantité (kg)" : "Quantité";
+  document.getElementById("fgQty").step = opt.dataset.unit === "kg" ? "0.05" : "1";
+  updatePreview();
+}
+function updatePreview(){
+  const qty = parseFloat(document.getElementById("fgQty").value)||0;
+  const price = parseFloat(document.getElementById("fgPrice").value)||0;
+  const brut = qty*price, commission = brut*{{ commission_rate }}, net = brut-commission;
+  document.getElementById("fgPreview").textContent = "Brut : " + brut.toFixed(3) + " DT  •  Commission : " + commission.toFixed(3) + " DT  •  Net : " + net.toFixed(3) + " DT";
+}
+</script>
+{% endblock %}

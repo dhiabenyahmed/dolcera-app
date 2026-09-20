@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block pagetitle %}Dashboard{% endblock %}
+{% block content %}
+{% include "_period.html" %}
+
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="label">CA Magasin</div><div class="value">{{ dt(m.ca) }}</div><div class="sub">{{ m.count }} vente(s)</div></div>
+  <div class="kpi accent"><div class="label">CA Glovo (net reçu)</div><div class="value">{{ dt(gl.net) }}</div><div class="sub">{{ gl.count_livree + gl.count_annulee_sortie }} commande(s) comptées</div></div>
+  <div class="kpi gold"><div class="label">CA Total</div><div class="value">{{ dt(ca_total) }}</div><div class="sub">Magasin + Glovo net</div></div>
+  <div class="kpi"><div class="label">Charges</div><div class="value">{{ dt(ch.total) }}</div><div class="sub">Sur la période</div></div>
+  <div class="kpi" style="border-left:4px solid {{ 'var(--ok)' if benefice>=0 else 'var(--warn)' }}">
+    <div class="label">Bénéfice net estimé</div>
+    <div class="value" style="color:{{ 'var(--ok)' if benefice>=0 else 'var(--warn)' }}">{{ dt(benefice) }}</div>
+    <div class="sub">CA total − charges</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card"><h3>Évolution du chiffre d'affaires</h3><div class="chart-wrap"><canvas id="chEvolution"></canvas></div></div>
+  <div class="card"><h3>Répartition Magasin / Glovo</h3><div class="chart-wrap"><canvas id="chSplit"></canvas></div></div>
+</div>
+<div class="grid-2">
+  <div class="card"><h3>Top produits (CA cumulé)</h3><div class="chart-wrap"><canvas id="chTopProd"></canvas></div></div>
+  <div class="card"><h3>Répartition par catégorie</h3><div class="chart-wrap"><canvas id="chCat"></canvas></div></div>
+</div>
+
+<div class="table-card">
+  <div class="table-head"><h3>Résumé par catégorie</h3></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Catégorie</th><th class="num">CA Magasin</th><th class="num">CA Glovo (net)</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      {% if cat_rows|length == 0 %}
+        <tr><td colspan="4" class="empty">Aucune vente sur cette période.</td></tr>
+      {% else %}
+        {% for cat, cm, cg in cat_rows %}
+          <tr><td>{{ cat }}</td><td class="num">{{ dt(cm) }}</td><td class="num">{{ dt(cg) }}</td><td class="num"><b>{{ dt(cm+cg) }}</b></td></tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data|tojson }};
+const textColor = "#1C2333", gridColor = "#E7DFC9";
+
+new Chart(document.getElementById("chEvolution"), { type:"line", data:{ labels:cd.days,
+  datasets:[
+    {label:"Magasin", data:cd.mag_series, borderColor:"#1B4496", backgroundColor:"rgba(27,68,150,.12)", fill:true, tension:.3, pointRadius:cd.days.length>20?0:2},
+    {label:"Glovo (net)", data:cd.glo_series, borderColor:"#E9A72F", backgroundColor:"rgba(233,167,47,.14)", fill:true, tension:.3, pointRadius:cd.days.length>20?0:2}
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}},
+    scales:{ x:{ ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:8}, grid:{color:gridColor} }, y:{ grid:{color:gridColor} } } } });
+
+new Chart(document.getElementById("chSplit"), { type:"doughnut", data:{ labels:["Magasin","Glovo (net)"], datasets:[{ data:cd.split, backgroundColor:["#1B4496","#E9A72F"] }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom"}} } });
+
+new Chart(document.getElementById("chTopProd"), { type:"bar", data:{ labels:cd.top_prod_labels, datasets:[{ data:cd.top_prod_values, backgroundColor:"#1B4496", borderRadius:5 }] },
+  options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:{ grid:{color:gridColor} }, y:{ grid:{display:false}, ticks:{font:{size:11}} } } } });
+
+new Chart(document.getElementById("chCat"), { type:"doughnut", data:{ labels:cd.cat_labels, datasets:[{ data:cd.cat_values, backgroundColor:cd.cat_colors }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{boxWidth:12, font:{size:11}}}} } });
+</script>
+{% endblock %}

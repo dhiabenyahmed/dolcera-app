@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block pagetitle %}Produits{% endblock %}
+{% block content %}
+
+<div class="form-card">
+  <h3>🍰 {{ "Modifier le produit" if editing else "Ajouter un produit" }}</h3>
+  <form method="post" action="{{ url_for('produits') }}">
+    {% if editing %}<input type="hidden" name="edit_id" value="{{ editing.id }}">{% endif %}
+    <div class="form-row">
+      <div class="field"><label>Catégorie</label>
+        <select name="category">
+          {% for c in cats %}<option value="{{ c }}" {{ 'selected' if editing and editing.category==c else '' }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Nom du produit</label><input type="text" name="name" value="{{ editing.name if editing else '' }}" required></div>
+      <div class="field"><label>Prix (DT)</label><input type="number" name="price" min="0" step="0.001" value="{{ editing.price if editing else '' }}" required></div>
+      <div class="field"><label>Unité</label>
+        <select name="unit">
+          <option value="unite" {{ 'selected' if editing and editing.unit=='unite' else '' }}>À la pièce</option>
+          <option value="kg" {{ 'selected' if editing and editing.unit=='kg' else '' }}>Au kg</option>
+        </select>
+      </div>
+      <div class="flex">
+        <button type="submit" class="btn btn-primary">{{ "Enregistrer" if editing else "Ajouter" }}</button>
+        {% if editing %}<a class="btn btn-ghost" href="{{ url_for('produits') }}">Annuler</a>{% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="prod-groups">
+  {% for cat in cats %}
+  <div class="prod-group">
+    <h4><span class="tile-rule" style="flex:0 0 22px;"></span>{{ cat }} <span style="font-weight:400;color:var(--ink-soft);font-size:12.5px">({{ grouped[cat]|length }})</span></h4>
+    <div class="prod-list">
+      {% if grouped[cat]|length == 0 %}
+        <div class="hint">Aucun produit dans cette catégorie.</div>
+      {% endif %}
+      {% for p in grouped[cat] %}
+        <div class="prod-item">
+          <div><div class="pname">{{ p.name }}</div><div class="punit">{{ 'Prix au kg' if p.unit=='kg' else 'Prix à la pièce' }}</div></div>
+          <div class="flex">
+            <span class="pprice">{{ '%.3f'|format(p.price) }} DT</span>
+            <a href="{{ url_for('produits', edit=p.id) }}">Modifier</a>
+            <form method="post" action="{{ url_for('produits_delete', id=p.id) }}" onsubmit="return confirm('Supprimer ce produit ?')"><button class="btn-danger">✕</button></form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
